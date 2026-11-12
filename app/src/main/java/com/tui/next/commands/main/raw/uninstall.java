@@ -1,0 +1,82 @@
+package com.tui.next.commands.main.raw;
+
+import android.content.Intent;
+import android.net.Uri;
+
+import com.tui.next.R;
+import com.tui.next.commands.CommandAbstraction;
+import com.tui.next.commands.ExecutePack;
+import com.tui.next.commands.main.MainPack;
+import com.tui.next.managers.AppsManager;
+import com.tui.next.tuils.Tuils;
+
+public class uninstall implements CommandAbstraction {
+
+    @Override
+    public String exec(ExecutePack pack) {
+        MainPack info = (MainPack) pack;
+
+        AppsManager.LaunchInfo launchInfo = info.getLaunchInfo();
+        if (launchInfo == null || launchInfo.componentName == null) {
+            return info.res.getString(R.string.output_appnotfound);
+        }
+
+        return uninstall(info, launchInfo.componentName.getPackageName());
+    }
+
+    private String uninstall(MainPack info, String packageName) {
+        if (packageName == null || packageName.isEmpty()) {
+            return info.res.getString(R.string.output_appnotfound);
+        }
+
+        try {
+            Uri packageURI = Uri.fromParts("package", packageName, null);
+            Intent uninstallIntent = new Intent(Intent.ACTION_DELETE, packageURI);
+            uninstallIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            info.context.startActivity(uninstallIntent);
+        } catch (Exception e) {
+            return e.toString();
+        }
+
+        return String.format("Uninstalling %s...", packageName);
+    }
+
+    @Override
+    public int helpRes() {
+        return R.string.help_uninstall;
+    }
+
+    @Override
+    public int[] argType() {
+        return new int[]{CommandAbstraction.ALL_PACKAGES};
+    }
+
+    @Override
+    public int priority() {
+        return 3;
+    }
+
+    @Override
+    public String onNotArgEnough(ExecutePack pack, int nArgs) {
+        MainPack info = (MainPack) pack;
+        return info.res.getString(helpRes());
+    }
+
+    @Override
+    public String onArgNotFound(ExecutePack pack, int index) {
+        MainPack info = (MainPack) pack;
+        String arg = (String) pack.args[index];
+
+        AppsManager.LaunchInfo li = info.appsManager.findLaunchInfoWithLabel(arg, AppsManager.HIDDEN_APPS);
+        if (li == null) {
+            li = info.appsManager.findLaunchInfoWithLabel(arg, AppsManager.SHOWN_APPS);
+        }
+
+        if (li != null && li.componentName != null) {
+            return uninstall(info, li.componentName.getPackageName());
+        }
+
+        return uninstall(info, arg);
+    }
+
+}
